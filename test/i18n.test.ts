@@ -13,6 +13,8 @@ describe('i18n', () => {
   it('includes a concise game guide in both supported locales', () => {
     expect(t('guideTitle', 'ko')).toBe('목표');
     expect(t('guideLow', 'en')).toContain('low');
+    expect(t('startButton', 'ko')).toBe('시작하기');
+    expect(t('introBody', 'ko')).toContain('개발 중');
   });
 
   it('localizes result labels and titles', () => {

@@ -2,7 +2,14 @@ import './styles.css';
 import { getResultMessageKey, type ResultRating } from './game/gameState';
 import { supportedLocales, t, type Locale, type MessageKey } from './i18n';
 import { createBrowserPlatformAdapters } from './platform/browserAdapters';
-import { applyDragFrame, createAppSession, resetSession, type AppSession } from './app/session';
+import {
+  applyDragFrame,
+  createAppSession,
+  finishSession,
+  resetSession,
+  startSession,
+  type AppSession
+} from './app/session';
 import { renderGame, type RenderLayout } from './app/render';
 
 const platform = createBrowserPlatformAdapters();
@@ -27,11 +34,13 @@ root.innerHTML = `
     </header>
     <section class="guide-panel" aria-live="polite">
       <h2 class="guide-title"></h2>
+      <p class="intro-copy"></p>
       <ul class="guide-list">
         <li class="guide-low"></li>
         <li class="guide-meter"></li>
         <li class="guide-finish"></li>
       </ul>
+      <button class="start-button" type="button"></button>
     </section>
     <div class="microcopy" aria-live="polite"></div>
     <section class="result-panel" aria-live="polite" hidden>
@@ -62,9 +71,11 @@ const timer = requireElement(root, '.timer', HTMLSpanElement);
 const microcopy = requireElement(root, '.microcopy', HTMLDivElement);
 const guidePanel = requireElement(root, '.guide-panel', HTMLElement);
 const guideTitle = requireElement(root, '.guide-title', HTMLHeadingElement);
+const introCopy = requireElement(root, '.intro-copy', HTMLParagraphElement);
 const guideLow = requireElement(root, '.guide-low', HTMLLIElement);
 const guideMeter = requireElement(root, '.guide-meter', HTMLLIElement);
 const guideFinish = requireElement(root, '.guide-finish', HTMLLIElement);
+const startButton = requireElement(root, '.start-button', HTMLButtonElement);
 const localeToggle = requireElement(root, '.locale-toggle', HTMLButtonElement);
 const resultPanel = requireElement(root, '.result-panel', HTMLElement);
 const resultRating = requireElement(root, '.result-rating', HTMLHeadingElement);
@@ -102,11 +113,13 @@ function syncDom(): void {
   timer.textContent = `${(session.elapsedMs / 1000).toFixed(1)}s`;
   localeToggle.textContent = session.locale === 'ko' ? 'EN' : 'KO';
   microcopy.textContent = statusText(session);
-  guidePanel.hidden = session.status !== 'ready';
+  guidePanel.hidden = session.status !== 'intro';
   guideTitle.textContent = t('guideTitle', session.locale);
+  introCopy.textContent = t('introBody', session.locale);
   guideLow.textContent = t('guideLow', session.locale);
   guideMeter.textContent = t('guideMeter', session.locale);
   guideFinish.textContent = t('guideFinish', session.locale);
+  startButton.textContent = t('startButton', session.locale);
   retryButton.textContent = t('retry', session.locale);
 
   if (!session.game.result) {
@@ -142,7 +155,7 @@ function statusText(current: AppSession): string {
 }
 
 canvas.addEventListener('pointerdown', (event) => {
-  if (!layout || session.status === 'result') {
+  if (!layout || session.status === 'intro' || session.status === 'result') {
     return;
   }
 
@@ -181,6 +194,13 @@ canvas.addEventListener('pointermove', (event) => {
 canvas.addEventListener('pointerup', endDrag);
 canvas.addEventListener('pointercancel', endDrag);
 
+startButton.addEventListener('click', () => {
+  session = startSession(session);
+  lastEmittedStatus = session.status;
+  platform.analytics.track('peel_game_started');
+  platform.audio.emit('ui:start');
+});
+
 function endDrag(event: PointerEvent): void {
   if (!dragging) {
     return;
@@ -192,6 +212,10 @@ function endDrag(event: PointerEvent): void {
     canvas.releasePointerCapture(event.pointerId);
   }
   lastPoint = null;
+  if (session.status === 'torn') {
+    session = finishSession(session);
+    emitFeedback(session);
+  }
 }
 
 localeToggle.addEventListener('click', async () => {
@@ -209,7 +233,7 @@ localeToggle.addEventListener('click', async () => {
 
 retryButton.addEventListener('click', () => {
   platform.audio.emit('ui:retry');
-  session = resetSession(session);
+  session = startSession(resetSession(session));
   lastEmittedStatus = session.status;
 });
 
@@ -228,7 +252,7 @@ function emitFeedback(current: AppSession): void {
   } else if (current.status === 'peelingDanger') {
     platform.haptics.emit('peel.dangerPulse');
     platform.audio.emit('peel:danger:tick');
-  } else if (current.status === 'result' && current.game.result?.rating === 'Torn') {
+  } else if (current.status === 'torn' || (current.status === 'result' && current.game.result?.rating === 'Torn')) {
     platform.haptics.emit('peel.tearSnap');
     platform.audio.emit('peel:tear');
   } else if (current.status === 'result') {

@@ -9,6 +9,8 @@ export type MessageKey =
   | 'danger'
   | 'retry'
   | 'language'
+  | 'introBody'
+  | 'startButton'
   | 'guideTitle'
   | 'guideLow'
   | 'guideMeter'
@@ -37,6 +39,8 @@ const messages: Record<Locale, Record<MessageKey, string>> = {
     danger: '찢어질 수 있어요',
     retry: '다시 떼기',
     language: '언어',
+    introBody: '개발 중인 촉감 테스트예요. 모서리를 잡고 천천히 낮게 당기면서, 바가 붉어지면 힘을 빼보세요. 규칙과 설명은 계속 바뀔 수 있어요.',
+    startButton: '시작하기',
     guideTitle: '목표',
     guideLow: '모서리를 잡고 낮게 당기기',
     guideMeter: '바가 붉어지면 힘을 빼기',
@@ -64,6 +68,8 @@ const messages: Record<Locale, Record<MessageKey, string>> = {
     danger: 'May tear',
     retry: 'Peel again',
     language: 'Language',
+    introBody: 'This is a work-in-progress feel test. Hold the corner, peel low and slow, and ease off when the bar turns red. The rules and guide may change.',
+    startButton: 'Start',
     guideTitle: 'Goal',
     guideLow: 'Hold the corner and peel low',
     guideMeter: 'Ease off when the bar turns red',

@@ -48,6 +48,7 @@ export type AudioEvent =
   | 'peel:danger:tick'
   | 'peel:release'
   | 'peel:tear'
+  | 'ui:start'
   | 'ui:retry';
 
 export interface AudioAdapter {

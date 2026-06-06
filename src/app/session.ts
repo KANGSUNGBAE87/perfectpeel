@@ -8,6 +8,7 @@ import {
 import type { Locale } from '../i18n';
 
 export type AppSessionStatus =
+  | 'intro'
   | 'ready'
   | 'peelingSafe'
   | 'peelingWarning'
@@ -33,15 +34,15 @@ export interface AppSession {
 
 const IDEAL_DIRECTION: Vector = { x: -1, y: 0 };
 const PULL_OFFSET_LIMITS = {
-  minX: -180,
+  minX: -420,
   maxX: 36,
-  minY: -96,
-  maxY: 96
+  minY: -140,
+  maxY: 140
 };
 
 export function createAppSession(locale: Locale = 'ko'): AppSession {
   return {
-    status: 'ready',
+    status: 'intro',
     locale,
     game: createInitialGameState(locale),
     physics: createInitialPeelPhysicsState(),
@@ -51,8 +52,19 @@ export function createAppSession(locale: Locale = 'ko'): AppSession {
   };
 }
 
+export function startSession(session: AppSession): AppSession {
+  if (session.status !== 'intro') {
+    return session;
+  }
+
+  return {
+    ...session,
+    status: 'ready'
+  };
+}
+
 export function applyDragFrame(session: AppSession, frame: DragFrame): AppSession {
-  if (session.status === 'result') {
+  if (session.status === 'intro' || session.status === 'result') {
     return session;
   }
 
@@ -67,7 +79,7 @@ export function applyDragFrame(session: AppSession, frame: DragFrame): AppSessio
   const status = statusFromUpdate(update.zone, update.state);
   const pullOffset = nextPullOffset(session.pullOffset, frame.dragDelta);
 
-  if (update.state.progress >= 1 || update.state.torn) {
+  if (update.state.progress >= 1) {
     return {
       ...finishSession({
         ...session,
@@ -77,7 +89,7 @@ export function applyDragFrame(session: AppSession, frame: DragFrame): AppSessio
         previousSpeed: update.pull.speed,
         elapsedMs
       }),
-      status: update.state.torn ? 'result' : 'result'
+      status: 'result'
     };
   }
 

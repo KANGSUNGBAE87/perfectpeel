@@ -1,4 +1,5 @@
 import type { AppSession } from './session';
+import { getVisualPeelProgress } from './renderModel';
 
 export interface RenderLayout {
   sticker: DOMRect;
@@ -94,12 +95,16 @@ function drawResidue(context: CanvasRenderingContext2D, sticker: DOMRect, sessio
 }
 
 function drawSticker(context: CanvasRenderingContext2D, sticker: DOMRect, session: AppSession): void {
-  const progress = session.physics.progress;
-  const remainingWidth = sticker.width * Math.max(0, 1 - progress);
+  const visualProgress = getVisualPeelProgress({
+    physicsProgress: session.physics.progress,
+    pullOffsetX: session.pullOffset.x,
+    stickerWidth: sticker.width
+  });
+  const remainingWidth = sticker.width * Math.max(0, 1 - visualProgress);
   const peelEdgeX = sticker.x + remainingWidth;
   const zoneColor = session.status === 'peelingDanger' || session.physics.tearPreview ? '#d94a45' : session.status === 'peelingWarning' ? '#d59a2c' : '#2f85a4';
   const heldCorner = getHeldCornerPoint(sticker, session);
-  const activePeel = progress > 0 || Math.abs(session.pullOffset.x) > 1 || Math.abs(session.pullOffset.y) > 1;
+  const activePeel = visualProgress > 0 || Math.abs(session.pullOffset.x) > 1 || Math.abs(session.pullOffset.y) > 1;
 
   context.save();
   if (remainingWidth > 2) {
@@ -117,7 +122,7 @@ function drawSticker(context: CanvasRenderingContext2D, sticker: DOMRect, sessio
   }
 
   if (activePeel) {
-    const flapWidth = sticker.width * Math.min(0.48, Math.max(0.18, progress * 0.58));
+    const flapWidth = sticker.width * Math.min(0.48, Math.max(0.18, visualProgress * 0.58));
     const handleTop = {
       x: heldCorner.x,
       y: heldCorner.y - sticker.height * 0.18
@@ -155,7 +160,7 @@ function drawSticker(context: CanvasRenderingContext2D, sticker: DOMRect, sessio
   }
 
   drawStickerLines(context, sticker, remainingWidth, session);
-  drawLiftedCorner(context, sticker, progress, zoneColor, heldCorner);
+  drawLiftedCorner(context, sticker, visualProgress, zoneColor, heldCorner);
   context.restore();
 }
 

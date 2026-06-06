@@ -15,6 +15,7 @@ const audioFrequencies: Record<AudioEvent, number> = {
   'peel:danger:tick': 140,
   'peel:release': 520,
   'peel:tear': 90,
+  'ui:start': 460,
   'ui:retry': 390
 };
 

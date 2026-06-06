@@ -127,13 +127,13 @@ button:active {
   position: absolute;
   top: calc(max(12px, env(safe-area-inset-top)) + 62px);
   left: max(12px, env(safe-area-inset-left));
-  width: min(270px, calc(100vw - 24px));
+  width: min(340px, calc(100vw - 24px));
   padding: 12px 14px;
   border-radius: 8px;
   color: #24313d;
   background: rgba(255, 255, 255, 0.78);
   box-shadow: 0 10px 30px rgba(42, 31, 20, 0.1);
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .guide-panel[hidden] {
@@ -145,6 +145,14 @@ button:active {
   font-size: 13px;
   line-height: 1.1;
   color: #69747e;
+}
+
+.intro-copy {
+  margin: 0 0 10px;
+  color: #53616d;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.42;
 }
 
 .guide-list {
@@ -172,6 +180,13 @@ button:active {
   border-radius: 50%;
   background: #2f85a4;
   content: "";
+}
+
+.start-button {
+  width: 100%;
+  margin-top: 12px;
+  background: #17212b;
+  color: #ffffff;
 }
 
 .result-panel {
