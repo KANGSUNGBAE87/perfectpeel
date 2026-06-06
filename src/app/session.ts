@@ -93,6 +93,20 @@ export function applyDragFrame(session: AppSession, frame: DragFrame): AppSessio
     progress: Math.max(update.state.progress, visualProgress)
   };
 
+  if (physics.torn) {
+    return {
+      ...finishSession({
+        ...session,
+        status: 'torn',
+        physics,
+        pullOffset,
+        previousSpeed: update.pull.speed,
+        elapsedMs
+      }),
+      status: 'result'
+    };
+  }
+
   if (physics.progress >= 1) {
     return {
       ...finishSession({
@@ -120,7 +134,7 @@ export function applyDragFrame(session: AppSession, frame: DragFrame): AppSessio
 export function finishSession(session: AppSession): AppSession {
   const game = finishRun(session.game, {
     progress: session.physics.progress,
-    tearDamage: session.physics.tearDamage,
+    tearDamage: session.physics.torn ? Math.max(session.physics.tearDamage, 0.35) : session.physics.tearDamage,
     residueDamage: session.physics.residueDamage,
     elapsedMs: session.elapsedMs
   });

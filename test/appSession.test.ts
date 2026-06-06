@@ -49,24 +49,16 @@ describe('app session', () => {
     expect(reset.status).toBe('intro');
   });
 
-  it('keeps the held corner moving after a tear until the run is explicitly finished', () => {
+  it('finishes immediately when the sticker tears during drag', () => {
     const session = startSession(createAppSession());
     const torn = applyDragFrame(session, {
       deltaMs: 100,
       dragDelta: { x: 0, y: -80 }
     });
 
-    expect(torn.status).toBe('torn');
-    expect(torn.game.result).toBeNull();
-
-    const continued = applyDragFrame(torn, {
-      deltaMs: 100,
-      dragDelta: { x: -60, y: 0 }
-    });
-
-    expect(continued.status).toBe('torn');
-    expect(continued.pullOffset.x).toBeLessThan(torn.pullOffset.x);
-    expect(continued.game.result).toBeNull();
+    expect(torn.status).toBe('result');
+    expect(torn.physics.torn).toBe(true);
+    expect(torn.game.result?.rating).toBe('Torn');
   });
 
   it('finishes with a result from current physics', () => {
