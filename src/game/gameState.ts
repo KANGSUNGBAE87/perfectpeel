@@ -85,8 +85,11 @@ function rateRun(
   elapsedMs: number,
   progress: number
 ): ResultRating {
-  if (tearPercent >= 35 || progress < 1) {
+  if (tearPercent >= 35 || progress < 0.85) {
     return 'Torn';
+  }
+  if (progress < 1) {
+    return 'Messy';
   }
   if (cleanPercent >= 95 && tearPercent === 0 && residuePercent <= 3 && elapsedMs <= 30000) {
     return 'Perfect';

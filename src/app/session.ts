@@ -33,6 +33,7 @@ export interface AppSession {
 }
 
 const IDEAL_DIRECTION: Vector = { x: -1, y: 0 };
+const RELEASE_FINISH_PROGRESS = 0.85;
 const PULL_OFFSET_LIMITS = {
   minX: -420,
   maxX: 36,
@@ -118,6 +119,24 @@ export function finishSession(session: AppSession): AppSession {
   };
 }
 
+export function releaseSession(session: AppSession): AppSession {
+  if (session.status === 'intro' || session.status === 'result') {
+    return session;
+  }
+
+  if (session.physics.torn || session.physics.progress >= RELEASE_FINISH_PROGRESS) {
+    return finishSession({
+      ...session,
+      status: session.physics.torn ? 'torn' : 'released'
+    });
+  }
+
+  return {
+    ...session,
+    status: statusFromRelease(session)
+  };
+}
+
 export function resetSession(session: AppSession): AppSession {
   return {
     ...createAppSession(session.locale),
@@ -139,6 +158,19 @@ function statusFromUpdate(zone: 'safe' | 'warning' | 'danger', physics: PeelPhys
     return 'peelingWarning';
   }
   return 'peelingDanger';
+}
+
+function statusFromRelease(session: AppSession): AppSessionStatus {
+  if (session.physics.progress <= 0) {
+    return 'ready';
+  }
+  if (session.physics.tearPreview || session.physics.tension > 0.68) {
+    return 'peelingDanger';
+  }
+  if (session.physics.tension > 0.34) {
+    return 'peelingWarning';
+  }
+  return 'peelingSafe';
 }
 
 function nextPullOffset(current: Vector, dragDelta: Vector): Vector {

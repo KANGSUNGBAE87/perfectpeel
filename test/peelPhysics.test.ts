@@ -56,6 +56,19 @@ describe('peel physics', () => {
     expect(next.state.dangerTimeMs).toBeGreaterThanOrEqual(500);
   });
 
+  it('does not tear immediately from a single fast low pull', () => {
+    const next = updatePeelFrame(baseState, {
+      ...baseInput,
+      deltaMs: 16,
+      dragDelta: { x: -42, y: 1 },
+      previousSpeed: 0
+    });
+
+    expect(next.zone).toBe('danger');
+    expect(next.state.torn).toBe(false);
+    expect(next.state.tearPreview).toBe(false);
+  });
+
   it('recovers tension when the player returns to a safe pull', () => {
     const dangerState: PeelPhysicsState = {
       ...baseState,

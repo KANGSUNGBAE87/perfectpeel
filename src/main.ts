@@ -5,7 +5,7 @@ import { createBrowserPlatformAdapters } from './platform/browserAdapters';
 import {
   applyDragFrame,
   createAppSession,
-  finishSession,
+  releaseSession,
   resetSession,
   startSession,
   type AppSession
@@ -42,6 +42,31 @@ root.innerHTML = `
       </ul>
       <button class="start-button" type="button"></button>
     </section>
+    <section class="play-hud" aria-live="polite" hidden>
+      <div class="hud-status"></div>
+      <div class="hud-row">
+        <div class="hud-copy">
+          <span class="hud-label progress-label"></span>
+          <span class="hud-value progress-value"></span>
+        </div>
+        <div class="hud-track progress-track">
+          <span class="finish-marker"></span>
+          <span class="progress-fill"></span>
+        </div>
+        <span class="hud-note release-note"></span>
+      </div>
+      <div class="hud-row">
+        <div class="hud-copy">
+          <span class="hud-label force-label"></span>
+          <span class="hud-value force-value"></span>
+        </div>
+        <div class="hud-track force-track">
+          <span class="force-target"></span>
+          <span class="force-fill"></span>
+        </div>
+        <span class="hud-note force-note"></span>
+      </div>
+    </section>
     <div class="microcopy" aria-live="polite"></div>
     <section class="result-panel" aria-live="polite" hidden>
       <h1 class="result-rating"></h1>
@@ -69,6 +94,16 @@ const title = requireElement(root, '.title', HTMLSpanElement);
 const hint = requireElement(root, '.hint', HTMLSpanElement);
 const timer = requireElement(root, '.timer', HTMLSpanElement);
 const microcopy = requireElement(root, '.microcopy', HTMLDivElement);
+const playHud = requireElement(root, '.play-hud', HTMLElement);
+const hudStatus = requireElement(root, '.hud-status', HTMLDivElement);
+const progressLabel = requireElement(root, '.progress-label', HTMLSpanElement);
+const progressValue = requireElement(root, '.progress-value', HTMLSpanElement);
+const progressFill = requireElement(root, '.progress-fill', HTMLSpanElement);
+const releaseNote = requireElement(root, '.release-note', HTMLSpanElement);
+const forceLabel = requireElement(root, '.force-label', HTMLSpanElement);
+const forceValue = requireElement(root, '.force-value', HTMLSpanElement);
+const forceFill = requireElement(root, '.force-fill', HTMLSpanElement);
+const forceNote = requireElement(root, '.force-note', HTMLSpanElement);
 const guidePanel = requireElement(root, '.guide-panel', HTMLElement);
 const guideTitle = requireElement(root, '.guide-title', HTMLHeadingElement);
 const introCopy = requireElement(root, '.intro-copy', HTMLParagraphElement);
@@ -113,7 +148,12 @@ function syncDom(): void {
   timer.textContent = `${(session.elapsedMs / 1000).toFixed(1)}s`;
   localeToggle.textContent = session.locale === 'ko' ? 'EN' : 'KO';
   microcopy.textContent = statusText(session);
+  microcopy.hidden = true;
   guidePanel.hidden = session.status !== 'intro';
+  playHud.hidden = session.status === 'intro' || session.status === 'result';
+  playHud.dataset.zone = hudZone(session);
+  hudStatus.textContent = statusText(session);
+  syncHud();
   guideTitle.textContent = t('guideTitle', session.locale);
   introCopy.textContent = t('introBody', session.locale);
   guideLow.textContent = t('guideLow', session.locale);
@@ -141,6 +181,19 @@ function syncDom(): void {
   metricNodes.timeValue.textContent = `${(result.elapsedMs / 1000).toFixed(1)}s`;
 }
 
+function syncHud(): void {
+  const progressPercent = Math.round(session.physics.progress * 100);
+  const forcePercent = Math.round(session.physics.tension * 100);
+  progressLabel.textContent = t('peelProgress', session.locale);
+  progressValue.textContent = `${progressPercent}%`;
+  progressFill.style.width = `${Math.min(100, progressPercent)}%`;
+  releaseNote.textContent = progressPercent >= 85 ? t('releaseAt', session.locale) : t('earlyRelease', session.locale);
+  forceLabel.textContent = t('force', session.locale);
+  forceValue.textContent = `${forcePercent}%`;
+  forceFill.style.width = `${Math.min(100, forcePercent)}%`;
+  forceNote.textContent = t('forceTarget', session.locale);
+}
+
 function statusText(current: AppSession): string {
   if (current.status === 'peelingDanger' || current.status === 'torn') {
     return t('danger', current.locale);
@@ -152,6 +205,16 @@ function statusText(current: AppSession): string {
     return t('safe', current.locale);
   }
   return t('startHint', current.locale);
+}
+
+function hudZone(current: AppSession): 'safe' | 'warning' | 'danger' {
+  if (current.status === 'peelingDanger' || current.status === 'torn') {
+    return 'danger';
+  }
+  if (current.status === 'peelingWarning') {
+    return 'warning';
+  }
+  return 'safe';
 }
 
 canvas.addEventListener('pointerdown', (event) => {
@@ -212,10 +275,8 @@ function endDrag(event: PointerEvent): void {
     canvas.releasePointerCapture(event.pointerId);
   }
   lastPoint = null;
-  if (session.status === 'torn') {
-    session = finishSession(session);
-    emitFeedback(session);
-  }
+  session = releaseSession(session);
+  emitFeedback(session);
 }
 
 localeToggle.addEventListener('click', async () => {

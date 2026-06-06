@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyDragFrame, createAppSession, finishSession, resetSession, startSession } from '../src/app/session';
+import { applyDragFrame, createAppSession, finishSession, releaseSession, resetSession, startSession } from '../src/app/session';
 
 describe('app session', () => {
   it('waits for the player to press start before accepting drag input', () => {
@@ -84,6 +84,63 @@ describe('app session', () => {
 
     expect(next.status).toBe('result');
     expect(next.game.result?.rating).toBe('Clean');
+  });
+
+  it('keeps a partial non-torn release playable below the finish threshold', () => {
+    const session = startSession({
+      ...createAppSession(),
+      physics: {
+        ...createAppSession().physics,
+        progress: 0.62,
+        tearDamage: 0,
+        residueDamage: 0.03,
+        torn: false
+      }
+    });
+
+    const released = releaseSession(session);
+
+    expect(released.status).toBe('peelingSafe');
+    expect(released.game.result).toBeNull();
+  });
+
+  it('finishes as a messy result when released near completion', () => {
+    const session = startSession({
+      ...createAppSession(),
+      elapsedMs: 18000,
+      physics: {
+        ...createAppSession().physics,
+        progress: 0.9,
+        tearDamage: 0,
+        residueDamage: 0.04,
+        torn: false
+      }
+    });
+
+    const released = releaseSession(session);
+
+    expect(released.status).toBe('result');
+    expect(released.game.result?.rating).toBe('Messy');
+    expect(released.game.result?.cleanPercent).toBe(86);
+  });
+
+  it('finishes a torn release immediately', () => {
+    const session = startSession({
+      ...createAppSession(),
+      elapsedMs: 1200,
+      physics: {
+        ...createAppSession().physics,
+        progress: 0.18,
+        tearDamage: 0.42,
+        residueDamage: 0.08,
+        torn: true
+      }
+    });
+
+    const released = releaseSession(session);
+
+    expect(released.status).toBe('result');
+    expect(released.game.result?.rating).toBe('Torn');
   });
 
   it('resets while preserving locale', () => {

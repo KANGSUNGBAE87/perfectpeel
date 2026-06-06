@@ -31,6 +31,18 @@ describe('game state and scoring', () => {
     expect(getResultMessageKey(state.result)).toBe('resultTorn');
   });
 
+  it('rates a near-complete early release as messy instead of torn', () => {
+    const state = finishRun(createInitialGameState(), {
+      progress: 0.9,
+      tearDamage: 0,
+      residueDamage: 0.04,
+      elapsedMs: 18000
+    });
+
+    expect(state.result?.rating).toBe('Messy');
+    expect(state.result?.cleanPercent).toBe(86);
+  });
+
   it('resets the run while keeping the selected locale', () => {
     const state = createInitialGameState('en');
     const finished = finishRun(state, {

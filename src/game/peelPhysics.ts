@@ -98,7 +98,7 @@ export function updatePeelFrame(
 
   const tension = nextTension(current.tension, pull.zone, input.deltaMs);
   const tearPreview = dangerTimeMs >= TEAR_PREVIEW_MS && pull.zone === 'danger';
-  const severeJerk = pull.jerk > DANGER_JERK * 1.35;
+  const severeJerk = pull.angleDegrees > SAFE_ANGLE && pull.jerk > DANGER_JERK * 1.35;
   const torn = current.torn || dangerTimeMs >= TEAR_EVENT_MS || severeJerk;
   const tearDamage = clamp(
     current.tearDamage + (torn ? 0.12 : pull.zone === 'danger' ? seconds * 0.08 : 0),
