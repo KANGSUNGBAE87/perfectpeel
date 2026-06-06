@@ -4,4 +4,5 @@ graphify-out/
 .agents/skills/
 .claude/
 .codex/
+.gstack/
 .DS_Store
