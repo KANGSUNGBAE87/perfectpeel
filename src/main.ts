@@ -248,7 +248,8 @@ canvas.addEventListener('pointermove', (event) => {
     dragDelta: {
       x: point.x - lastPoint.x,
       y: point.y - lastPoint.y
-    }
+    },
+    stickerWidth: layout?.sticker.width
   });
   emitFeedback(session);
   lastPoint = { ...point, at: now };

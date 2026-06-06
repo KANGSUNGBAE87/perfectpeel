@@ -33,7 +33,8 @@ export type MessageKey =
   | 'resultTorn'
   | 'resultResidue'
   | 'resultPerfect'
-  | 'resultClean';
+  | 'resultClean'
+  | 'resultMessy';
 
 const messages: Record<Locale, Record<MessageKey, string>> = {
   ko: {
@@ -68,7 +69,8 @@ const messages: Record<Locale, Record<MessageKey, string>> = {
     resultTorn: '위로 당기거나 너무 빨라서 찢어졌어요. 다음엔 더 낮게, 더 천천히.',
     resultResidue: '조금 빨랐어요. 오른쪽 끝에 접착 자국이 남았어요.',
     resultPerfect: '각도 좋아요. 거의 완벽하게 떨어졌어요.',
-    resultClean: '깔끔해요. 다음엔 잔여물을 더 줄여보세요.'
+    resultClean: '깔끔해요. 다음엔 잔여물을 더 줄여보세요.',
+    resultMessy: '끝까지 떼었지만 자국이 남았어요. 다음엔 힘을 더 일정하게 유지해보세요.'
   },
   en: {
     appTitle: 'Sticker Peel',
@@ -102,7 +104,8 @@ const messages: Record<Locale, Record<MessageKey, string>> = {
     resultTorn: 'Too high or too fast. Next time, pull lower and slower.',
     resultResidue: 'A little too fast. Sticky residue stayed behind.',
     resultPerfect: 'Great angle. Almost a perfect clean peel.',
-    resultClean: 'Clean finish. Try for less residue next time.'
+    resultClean: 'Clean finish. Try for less residue next time.',
+    resultMessy: 'Fully removed, but residue stayed behind. Keep the force steadier next time.'
   }
 };
 

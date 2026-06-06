@@ -2,7 +2,7 @@ import type { Locale } from '../i18n';
 
 export type GameStatus = 'ready' | 'peeling' | 'result';
 export type ResultRating = 'Perfect' | 'Clean' | 'Messy' | 'Torn';
-export type ResultMessageKey = 'resultTry' | 'resultTorn' | 'resultResidue' | 'resultPerfect' | 'resultClean';
+export type ResultMessageKey = 'resultTry' | 'resultTorn' | 'resultResidue' | 'resultPerfect' | 'resultClean' | 'resultMessy';
 
 export interface FinishRunInput {
   progress: number;
@@ -65,6 +65,10 @@ export function getResultMessageKey(result: RunResult | null): ResultMessageKey 
 
   if (result.rating === 'Torn') {
     return 'resultTorn';
+  }
+
+  if (result.rating === 'Messy') {
+    return 'resultMessy';
   }
 
   if (result.residuePercent > 8) {

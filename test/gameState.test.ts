@@ -31,6 +31,18 @@ describe('game state and scoring', () => {
     expect(getResultMessageKey(state.result)).toBe('resultTorn');
   });
 
+  it('explains a messy complete result without calling it clean', () => {
+    const state = finishRun(createInitialGameState(), {
+      progress: 1,
+      tearDamage: 0,
+      residueDamage: 0.16,
+      elapsedMs: 18000
+    });
+
+    expect(state.result?.rating).toBe('Messy');
+    expect(getResultMessageKey(state.result)).toBe('resultMessy');
+  });
+
   it('rates a near-complete early release as messy instead of torn', () => {
     const state = finishRun(createInitialGameState(), {
       progress: 0.9,

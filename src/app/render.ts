@@ -30,11 +30,21 @@ export function renderGame(canvas: HTMLCanvasElement, context: CanvasRenderingCo
 
 function drawBackground(context: CanvasRenderingContext2D, width: number, height: number): void {
   const gradient = context.createLinearGradient(0, 0, width, height);
-  gradient.addColorStop(0, '#f7f0e7');
-  gradient.addColorStop(0.5, '#edf2ea');
-  gradient.addColorStop(1, '#d8e5df');
+  gradient.addColorStop(0, '#fbf7f0');
+  gradient.addColorStop(0.54, '#eef5ef');
+  gradient.addColorStop(1, '#d9e9e4');
   context.fillStyle = gradient;
   context.fillRect(0, 0, width, height);
+
+  context.save();
+  context.globalAlpha = 0.16;
+  context.fillStyle = '#c8d4ce';
+  for (let index = 0; index < 36; index += 1) {
+    const x = (index * 97) % Math.max(width, 1);
+    const y = (index * 53) % Math.max(height, 1);
+    context.fillRect(x, y, 1, 1);
+  }
+  context.restore();
 }
 
 function getSurfaceRect(width: number, height: number): DOMRect {
@@ -45,22 +55,26 @@ function getSurfaceRect(width: number, height: number): DOMRect {
 
 function drawSurface(context: CanvasRenderingContext2D, surface: DOMRect): void {
   context.save();
-  context.shadowColor = 'rgba(22, 30, 32, 0.18)';
-  context.shadowBlur = 28;
-  context.shadowOffsetY = 18;
-  roundedRect(context, surface.x, surface.y, surface.width, surface.height, 16);
-  context.fillStyle = '#5f6d73';
+  context.shadowColor = 'rgba(63, 71, 62, 0.16)';
+  context.shadowBlur = 34;
+  context.shadowOffsetY = 20;
+  roundedRect(context, surface.x, surface.y, surface.width, surface.height, 14);
+  const paper = context.createLinearGradient(surface.x, surface.y, surface.right, surface.bottom);
+  paper.addColorStop(0, '#fffdf7');
+  paper.addColorStop(0.58, '#f1efe4');
+  paper.addColorStop(1, '#e4eadf');
+  context.fillStyle = paper;
   context.fill();
   context.shadowColor = 'transparent';
-  context.strokeStyle = 'rgba(255, 255, 255, 0.36)';
+  context.strokeStyle = 'rgba(110, 122, 104, 0.18)';
   context.lineWidth = 2;
   context.stroke();
-  context.globalAlpha = 0.2;
-  for (let index = 0; index < 10; index += 1) {
+  context.globalAlpha = 0.16;
+  for (let index = 0; index < 12; index += 1) {
     context.beginPath();
-    context.moveTo(surface.x + 26, surface.y + 28 + index * 40);
-    context.lineTo(surface.right - 26, surface.y + 18 + index * 40);
-    context.strokeStyle = index % 2 === 0 ? '#ffffff' : '#17212b';
+    context.moveTo(surface.x + 24, surface.y + 30 + index * 34);
+    context.lineTo(surface.right - 24, surface.y + 24 + index * 34);
+    context.strokeStyle = index % 2 === 0 ? '#c7d3c8' : '#ffffff';
     context.lineWidth = 1;
     context.stroke();
   }
@@ -68,8 +82,8 @@ function drawSurface(context: CanvasRenderingContext2D, surface: DOMRect): void 
 }
 
 function getStickerRect(surface: DOMRect, width: number, height: number): DOMRect {
-  const stickerWidth = Math.min(surface.width * 0.58, width < 520 ? width * 0.78 : 450);
-  const stickerHeight = Math.min(surface.height * 0.34, height < 620 ? 128 : 160);
+  const stickerWidth = Math.min(surface.width * 0.66, width < 520 ? width * 0.82 : 520);
+  const stickerHeight = Math.min(surface.height * 0.22, height < 620 ? 96 : 118);
   return new DOMRect(
     surface.x + (surface.width - stickerWidth) / 2,
     surface.y + (surface.height - stickerHeight) / 2,
@@ -92,11 +106,11 @@ function drawResidue(context: CanvasRenderingContext2D, sticker: DOMRect, sessio
   const peeledWidth = sticker.width * visualProgress;
   const startX = sticker.right - peeledWidth;
   context.save();
-  context.globalAlpha = Math.min(0.42, residue + visualProgress * 0.18 + 0.08);
+  context.globalAlpha = Math.min(0.32, residue + visualProgress * 0.14 + 0.06);
   roundedRect(context, startX, sticker.y + 5, peeledWidth, sticker.height - 10, 7);
-  context.fillStyle = '#d7c39c';
+  context.fillStyle = '#e6cf93';
   context.fill();
-  context.fillStyle = '#c9b28f';
+  context.fillStyle = '#d6b767';
   const count = Math.ceil((residue + visualProgress * 0.28) * 28);
   for (let index = 0; index < count; index += 1) {
     const x = startX + Math.max(10, peeledWidth) * (((index * 37) % 86) / 100);
@@ -109,33 +123,47 @@ function drawResidue(context: CanvasRenderingContext2D, sticker: DOMRect, sessio
 }
 
 function drawSticker(context: CanvasRenderingContext2D, sticker: DOMRect, session: AppSession): void {
-  const visualProgress = getVisualPeelProgress({
-    physicsProgress: session.physics.progress,
-    pullOffsetX: session.pullOffset.x,
-    stickerWidth: sticker.width
-  });
+  const visualProgress =
+    session.status === 'result' && !session.physics.torn
+      ? 1
+      : getVisualPeelProgress({
+          physicsProgress: session.physics.progress,
+          pullOffsetX: session.pullOffset.x,
+          stickerWidth: sticker.width
+        });
   const remainingWidth = sticker.width * Math.max(0, 1 - visualProgress);
   const peelEdgeX = sticker.x + remainingWidth;
   const zoneColor = colorForSession(session);
   const heldCorner = getHeldCornerPoint(sticker, session);
   const activePeel = visualProgress > 0 || Math.abs(session.pullOffset.x) > 1 || Math.abs(session.pullOffset.y) > 1;
+  const removedResult = session.status === 'result' && visualProgress >= 0.99 && !session.physics.torn;
 
   context.save();
+  if (removedResult) {
+    context.restore();
+    return;
+  }
+
   if (remainingWidth > 2) {
     context.save();
-    context.shadowColor = 'rgba(30, 22, 12, 0.18)';
-    context.shadowBlur = 18;
-    context.shadowOffsetY = 10;
+    context.shadowColor = 'rgba(45, 41, 22, 0.1)';
+    context.shadowBlur = 14;
+    context.shadowOffsetY = 7;
     context.beginPath();
     context.rect(sticker.x, sticker.y, remainingWidth, sticker.height);
     context.clip();
     roundedRect(context, sticker.x, sticker.y, sticker.width, sticker.height, 8);
-    context.fillStyle = '#f8f1d9';
+    const tape = context.createLinearGradient(sticker.x, sticker.y, sticker.x, sticker.bottom);
+    tape.addColorStop(0, 'rgba(255, 250, 216, 0.64)');
+    tape.addColorStop(0.48, 'rgba(255, 238, 171, 0.46)');
+    tape.addColorStop(1, 'rgba(244, 217, 128, 0.38)');
+    context.fillStyle = tape;
     context.fill();
     context.shadowColor = 'transparent';
-    context.strokeStyle = 'rgba(80, 64, 38, 0.2)';
-    context.lineWidth = 2;
+    context.strokeStyle = 'rgba(178, 143, 54, 0.28)';
+    context.lineWidth = 1.5;
     context.stroke();
+    drawTapeHighlights(context, sticker, remainingWidth);
     context.restore();
   }
 
@@ -146,7 +174,7 @@ function drawSticker(context: CanvasRenderingContext2D, sticker: DOMRect, sessio
   if (remainingWidth > 2 && activePeel) {
     context.save();
     context.strokeStyle = zoneColor;
-    context.lineWidth = 3;
+    context.lineWidth = 2.2;
     context.beginPath();
     context.moveTo(peelEdgeX, sticker.y + 4);
     context.lineTo(peelEdgeX, sticker.bottom - 4);
@@ -161,11 +189,11 @@ function drawSticker(context: CanvasRenderingContext2D, sticker: DOMRect, sessio
 
 function drawStickerLines(context: CanvasRenderingContext2D, sticker: DOMRect, remainingWidth: number, session: AppSession): void {
   context.save();
-  context.globalAlpha = 0.32;
-  context.strokeStyle = '#d6c89b';
+  context.globalAlpha = 0.2;
+  context.strokeStyle = '#bca45b';
   context.lineWidth = 1;
   const maxX = sticker.x + Math.max(remainingWidth, 16);
-  for (let y = sticker.y + 18; y < sticker.bottom - 10; y += 18) {
+  for (let y = sticker.y + 20; y < sticker.bottom - 10; y += 24) {
     context.beginPath();
     context.moveTo(sticker.x + 14, y);
     context.lineTo(maxX - 12, y + (session.status === 'peelingWarning' ? Math.sin(y) * 2 : 0));
@@ -197,13 +225,13 @@ function drawLiftedRibbon(
 ): void {
   const topAnchor = { x: peelEdgeX, y: sticker.y + 6 };
   const bottomAnchor = { x: peelEdgeX, y: sticker.bottom - 6 };
-  const handleTop = { x: heldCorner.x - 16, y: heldCorner.y - sticker.height * 0.28 };
-  const handleBottom = { x: heldCorner.x + 30, y: heldCorner.y + sticker.height * 0.42 };
+  const handleTop = { x: heldCorner.x - 18, y: heldCorner.y - sticker.height * 0.3 };
+  const handleBottom = { x: heldCorner.x + 28, y: heldCorner.y + sticker.height * 0.46 };
 
   context.save();
-  context.shadowColor = 'rgba(30, 22, 12, 0.18)';
-  context.shadowBlur = 20;
-  context.shadowOffsetY = 12;
+  context.shadowColor = 'rgba(45, 41, 22, 0.18)';
+  context.shadowBlur = 22;
+  context.shadowOffsetY = 13;
   context.beginPath();
   context.moveTo(topAnchor.x, topAnchor.y);
   context.bezierCurveTo(
@@ -224,14 +252,25 @@ function drawLiftedRibbon(
     bottomAnchor.y
   );
   context.closePath();
-  context.fillStyle = '#fff8df';
+  const ribbon = context.createLinearGradient(topAnchor.x, sticker.y, heldCorner.x, heldCorner.y + sticker.height);
+  ribbon.addColorStop(0, 'rgba(255, 250, 219, 0.72)');
+  ribbon.addColorStop(0.55, 'rgba(255, 232, 145, 0.5)');
+  ribbon.addColorStop(1, 'rgba(255, 248, 216, 0.76)');
+  context.fillStyle = ribbon;
   context.fill();
   context.shadowColor = 'transparent';
   context.strokeStyle = zoneColor;
-  context.lineWidth = 2.5;
+  context.lineWidth = 2;
   context.stroke();
-  context.globalAlpha = 0.28;
-  context.strokeStyle = '#d6c89b';
+  context.globalAlpha = 0.42;
+  context.strokeStyle = '#fffdf1';
+  context.lineWidth = 2;
+  context.beginPath();
+  context.moveTo((topAnchor.x + handleTop.x) / 2 - 6, sticker.y + 18);
+  context.quadraticCurveTo(heldCorner.x - 28, heldCorner.y - 8, (bottomAnchor.x + handleBottom.x) / 2 - 8, sticker.bottom - 20);
+  context.stroke();
+  context.globalAlpha = 0.22;
+  context.strokeStyle = '#bca45b';
   context.lineWidth = 1;
   context.beginPath();
   context.moveTo((topAnchor.x + handleTop.x) / 2, sticker.y + 22);
@@ -248,24 +287,30 @@ function drawGrabTab(
   heldCorner: { x: number; y: number }
 ): void {
   const bob = progress === 0 ? Math.sin(performance.now() / 260) * 3 : 0;
-  const tabWidth = Math.min(94, sticker.width * 0.24);
-  const tabHeight = Math.min(92, sticker.height * 0.7);
+  const tabWidth = Math.min(112, sticker.width * 0.24);
+  const tabHeight = Math.min(76, sticker.height * 0.72);
   context.save();
   context.translate(heldCorner.x, heldCorner.y + bob);
   context.rotate(progress === 0 ? -0.22 : -0.08);
-  context.beginPath();
-  roundedRect(context, -tabWidth * 0.48, -tabHeight * 0.34, tabWidth, tabHeight, 12);
-  context.fillStyle = '#fff9e6';
+  context.shadowColor = 'rgba(45, 41, 22, 0.18)';
+  context.shadowBlur = 16;
+  context.shadowOffsetY = 8;
+  roundedRect(context, -tabWidth * 0.46, -tabHeight * 0.34, tabWidth, tabHeight, 10);
+  const tab = context.createLinearGradient(0, -tabHeight * 0.34, 0, tabHeight * 0.5);
+  tab.addColorStop(0, 'rgba(255, 253, 228, 0.82)');
+  tab.addColorStop(1, 'rgba(255, 228, 143, 0.56)');
+  context.fillStyle = tab;
   context.fill();
+  context.shadowColor = 'transparent';
   context.strokeStyle = zoneColor;
-  context.lineWidth = 2.5;
+  context.lineWidth = 2;
   context.stroke();
-  context.globalAlpha = 0.35;
-  context.strokeStyle = '#d6c89b';
-  context.lineWidth = 1;
+  context.globalAlpha = 0.55;
+  context.strokeStyle = '#fffdf1';
+  context.lineWidth = 2;
   context.beginPath();
   context.moveTo(-tabWidth * 0.24, -tabHeight * 0.16);
-  context.lineTo(tabWidth * 0.18, tabHeight * 0.22);
+  context.lineTo(tabWidth * 0.22, -tabHeight * 0.08);
   context.stroke();
   context.restore();
 }
@@ -286,25 +331,49 @@ function drawTensionGauge(context: CanvasRenderingContext2D, sticker: DOMRect, s
   const color = colorForSession(session);
 
   context.save();
-  roundedRect(context, x, y, width, 8, 4);
-  context.fillStyle = 'rgba(255, 255, 255, 0.64)';
+  roundedRect(context, x, y, width, 7, 4);
+  context.fillStyle = 'rgba(255, 255, 255, 0.72)';
   context.fill();
-  roundedRect(context, x, y, width * progress, 8, 4);
-  context.fillStyle = '#2f85a4';
-  context.fill();
+  if (progress > 0.005) {
+    roundedRect(context, x, y, width * progress, 7, 4);
+    context.fillStyle = '#2f85a4';
+    context.fill();
+  }
   context.fillStyle = 'rgba(23, 33, 43, 0.5)';
   context.fillRect(x + width * 0.85, y - 2, 2, 12);
 
   const forceY = y + 18;
-  roundedRect(context, x, forceY, width, 8, 4);
-  context.fillStyle = 'rgba(255, 255, 255, 0.64)';
+  roundedRect(context, x, forceY, width, 7, 4);
+  context.fillStyle = 'rgba(255, 255, 255, 0.72)';
   context.fill();
-  roundedRect(context, x + width * 0.28, forceY, width * 0.34, 8, 4);
+  roundedRect(context, x + width * 0.28, forceY, width * 0.34, 7, 4);
   context.fillStyle = 'rgba(47, 133, 164, 0.24)';
   context.fill();
-  roundedRect(context, x, forceY, width * tension, 8, 4);
-  context.fillStyle = color;
-  context.fill();
+  if (tension > 0.005) {
+    roundedRect(context, x, forceY, width * tension, 7, 4);
+    context.fillStyle = color;
+    context.fill();
+  }
+  context.restore();
+}
+
+function drawTapeHighlights(context: CanvasRenderingContext2D, sticker: DOMRect, remainingWidth: number): void {
+  const right = sticker.x + remainingWidth;
+  context.save();
+  context.globalAlpha = 0.48;
+  context.strokeStyle = '#fffdf1';
+  context.lineWidth = 2;
+  context.beginPath();
+  context.moveTo(sticker.x + 18, sticker.y + 12);
+  context.lineTo(right - 18, sticker.y + 10);
+  context.stroke();
+  context.globalAlpha = 0.18;
+  context.strokeStyle = '#9d8442';
+  context.lineWidth = 1;
+  context.beginPath();
+  context.moveTo(sticker.x + 22, sticker.bottom - 12);
+  context.lineTo(right - 18, sticker.bottom - 14);
+  context.stroke();
   context.restore();
 }
 

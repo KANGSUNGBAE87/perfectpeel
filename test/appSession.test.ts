@@ -86,6 +86,31 @@ describe('app session', () => {
     expect(next.game.result?.rating).toBe('Clean');
   });
 
+  it('finishes when the visible peel reaches the end of the sticker', () => {
+    const session = startSession(createAppSession());
+    const next = applyDragFrame(session, {
+      deltaMs: 16,
+      dragDelta: { x: -230, y: 2 },
+      stickerWidth: 240
+    });
+
+    expect(next.status).toBe('result');
+    expect(next.physics.progress).toBe(1);
+    expect(next.game.result).not.toBeNull();
+  });
+
+  it('uses visible peel distance as session progress while dragging', () => {
+    const session = startSession(createAppSession());
+    const next = applyDragFrame(session, {
+      deltaMs: 100,
+      dragDelta: { x: -120, y: 2 },
+      stickerWidth: 240
+    });
+
+    expect(next.status).not.toBe('result');
+    expect(next.physics.progress).toBeGreaterThan(0.5);
+  });
+
   it('keeps a partial non-torn release playable below the finish threshold', () => {
     const session = startSession({
       ...createAppSession(),

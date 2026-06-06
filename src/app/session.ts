@@ -6,6 +6,7 @@ import {
   type Vector
 } from '../game/peelPhysics';
 import type { Locale } from '../i18n';
+import { getVisualPeelProgress } from './renderModel';
 
 export type AppSessionStatus =
   | 'intro'
@@ -20,6 +21,7 @@ export type AppSessionStatus =
 export interface DragFrame {
   deltaMs: number;
   dragDelta: Vector;
+  stickerWidth?: number;
 }
 
 export interface AppSession {
@@ -79,13 +81,24 @@ export function applyDragFrame(session: AppSession, frame: DragFrame): AppSessio
   const elapsedMs = session.elapsedMs + frame.deltaMs;
   const status = statusFromUpdate(update.zone, update.state);
   const pullOffset = nextPullOffset(session.pullOffset, frame.dragDelta);
+  const visualProgress = frame.stickerWidth
+    ? getVisualPeelProgress({
+        physicsProgress: update.state.progress,
+        pullOffsetX: pullOffset.x,
+        stickerWidth: frame.stickerWidth
+      })
+    : update.state.progress;
+  const physics = {
+    ...update.state,
+    progress: Math.max(update.state.progress, visualProgress)
+  };
 
-  if (update.state.progress >= 1) {
+  if (physics.progress >= 1) {
     return {
       ...finishSession({
         ...session,
         status,
-        physics: update.state,
+        physics,
         pullOffset,
         previousSpeed: update.pull.speed,
         elapsedMs
@@ -97,7 +110,7 @@ export function applyDragFrame(session: AppSession, frame: DragFrame): AppSessio
   return {
     ...session,
     status,
-    physics: update.state,
+    physics,
     pullOffset,
     previousSpeed: update.pull.speed,
     elapsedMs
