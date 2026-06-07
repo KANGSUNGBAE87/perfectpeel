@@ -1,6 +1,6 @@
 import type { AppSession } from './session';
 import { getVisualPeelProgress, shouldDrawCanvasGauge } from './renderModel';
-import { selectStickerAssetKey, type StickerSprites } from './stickerAssets';
+import { getDynamicStickerLayers, type StickerSprite, type StickerSprites } from './stickerAssets';
 
 export interface RenderLayout {
   sticker: DOMRect;
@@ -218,24 +218,48 @@ function drawStickerSprite(
   visualProgress: number,
   activePeel: boolean
 ): void {
-  const key = selectStickerAssetKey({
+  const layers = getDynamicStickerLayers({
     visualProgress,
     pullOffset: session.pullOffset,
+    tension: session.physics.tension,
     torn: session.physics.torn
   });
-  const sprite = sprites[key];
+  const sprite = sprites[layers.baseKey];
   const aspectRatio = sprite.width / sprite.height;
-  const width = sticker.width * (key === 'rolled' ? 1.28 : 1.22);
+  const width = sticker.width * (layers.baseKey === 'rolled' ? 1.28 : 1.22);
   const height = width / aspectRatio;
-  const motionX = key === 'flat' ? 0 : Math.max(-22, Math.min(10, session.pullOffset.x * 0.05));
-  const motionY = key === 'flat' ? 0 : Math.max(-18, Math.min(16, session.pullOffset.y * 0.05));
+  const motionX = layers.baseKey === 'flat' ? 0 : Math.max(-22, Math.min(10, session.pullOffset.x * 0.05));
+  const motionY = layers.baseKey === 'flat' ? 0 : Math.max(-18, Math.min(16, session.pullOffset.y * 0.05));
   const x = sticker.x - sticker.width * 0.14 + motionX;
   const y = sticker.y - height * 0.38 + motionY;
 
-  context.save();
-  context.globalAlpha = session.status === 'result' && session.physics.torn ? 0.98 : 1;
-  context.drawImage(sprite.image, x, y, width, height);
-  context.restore();
+  drawDynamicLayer(context, sprites.shadow, {
+    x: x + sticker.width * 0.34 + layers.shadow.offsetX,
+    y: y + height * 0.46 + layers.shadow.offsetY,
+    width: sticker.width * 0.74,
+    opacity: layers.shadow.opacity,
+    rotation: layers.shadow.rotation,
+    scaleX: layers.shadow.scaleX,
+    scaleY: layers.shadow.scaleY
+  });
+  drawDynamicLayer(context, sprite, {
+    x,
+    y,
+    width,
+    opacity: session.status === 'result' && session.physics.torn ? 0.98 : 1,
+    rotation: layers.baseKey === 'flat' ? 0 : Math.max(-0.04, Math.min(0.04, session.pullOffset.y / 800)),
+    scaleX: 1,
+    scaleY: 1
+  });
+  drawDynamicLayer(context, sprites.flap, {
+    x: sticker.x + sticker.width * 0.42 + layers.flap.offsetX,
+    y: sticker.y - height * 0.16 + layers.flap.offsetY,
+    width: sticker.width * 0.58,
+    opacity: layers.flap.opacity,
+    rotation: layers.flap.rotation,
+    scaleX: layers.flap.scaleX,
+    scaleY: layers.flap.scaleY
+  });
 
   if (activePeel && !session.physics.torn) {
     drawSpritePullAccent(context, sticker, session, visualProgress);
@@ -244,6 +268,35 @@ function drawStickerSprite(
   if (session.physics.tearPreview && !session.physics.torn) {
     drawSpriteTearWarning(context, sticker);
   }
+}
+
+function drawDynamicLayer(
+  context: CanvasRenderingContext2D,
+  sprite: StickerSprite,
+  layer: {
+    x: number;
+    y: number;
+    width: number;
+    opacity: number;
+    rotation: number;
+    scaleX: number;
+    scaleY: number;
+  }
+): void {
+  if (layer.opacity <= 0.01) {
+    return;
+  }
+
+  const aspectRatio = sprite.width / sprite.height;
+  const height = layer.width / aspectRatio;
+
+  context.save();
+  context.globalAlpha *= layer.opacity;
+  context.translate(layer.x + layer.width / 2, layer.y + height / 2);
+  context.rotate(layer.rotation);
+  context.scale(layer.scaleX, layer.scaleY);
+  context.drawImage(sprite.image, -layer.width / 2, -height / 2, layer.width, height);
+  context.restore();
 }
 
 function drawSpritePullAccent(
