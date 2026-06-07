@@ -11,6 +11,10 @@ export function getVisualPeelProgress(input: VisualPeelProgressInput): number {
   return clamp(Math.max(input.physicsProgress, pullProgress), 0, 1);
 }
 
+export function shouldDrawCanvasGauge(status: string): boolean {
+  return status !== 'result';
+}
+
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }

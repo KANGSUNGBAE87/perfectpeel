@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getVisualPeelProgress } from '../src/app/renderModel';
+import { getVisualPeelProgress, shouldDrawCanvasGauge } from '../src/app/renderModel';
 
 describe('render model', () => {
   it('uses hand movement to keep the peeled sticker edge visually aligned', () => {
@@ -20,5 +20,10 @@ describe('render model', () => {
     });
 
     expect(progress).toBe(0.55);
+  });
+
+  it('hides the canvas gauge after the run has a result', () => {
+    expect(shouldDrawCanvasGauge('peelingSafe')).toBe(true);
+    expect(shouldDrawCanvasGauge('result')).toBe(false);
   });
 });

@@ -11,6 +11,7 @@ import {
   type AppSession
 } from './app/session';
 import { renderGame, type RenderLayout } from './app/render';
+import { loadStickerSprites, type StickerSprites } from './app/stickerAssets';
 
 const platform = createBrowserPlatformAdapters();
 const root = document.querySelector<HTMLDivElement>('#app');
@@ -122,6 +123,7 @@ let layout: RenderLayout | null = null;
 let dragging = false;
 let lastPoint: { x: number; y: number; at: number } | null = null;
 let lastEmittedStatus = session.status;
+let stickerSprites: StickerSprites | null = null;
 
 const metricNodes = {
   cleanLabel: requireElement(root, '.clean-label', HTMLSpanElement),
@@ -135,7 +137,7 @@ const metricNodes = {
 };
 
 function frame(): void {
-  layout = renderGame(canvas, canvasContext, session);
+  layout = renderGame(canvas, canvasContext, session, { stickerSprites });
   syncDom();
   requestAnimationFrame(frame);
 }
@@ -367,5 +369,13 @@ void platform.storage.get('locale').then((storedLocale) => {
     session = createAppSession(storedLocale);
   }
 });
+
+void loadStickerSprites(`${import.meta.env.BASE_URL}assets/stickers/sticker-sheet.png`)
+  .then((sprites) => {
+    stickerSprites = sprites;
+  })
+  .catch((error: unknown) => {
+    console.warn(error);
+  });
 
 requestAnimationFrame(frame);

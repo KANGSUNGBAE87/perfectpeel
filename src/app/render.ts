@@ -1,12 +1,22 @@
 import type { AppSession } from './session';
-import { getVisualPeelProgress } from './renderModel';
+import { getVisualPeelProgress, shouldDrawCanvasGauge } from './renderModel';
+import { selectStickerAssetKey, type StickerSprites } from './stickerAssets';
 
 export interface RenderLayout {
   sticker: DOMRect;
   liftedCorner: DOMRect;
 }
 
-export function renderGame(canvas: HTMLCanvasElement, context: CanvasRenderingContext2D, session: AppSession): RenderLayout {
+export interface RenderOptions {
+  stickerSprites?: StickerSprites | null;
+}
+
+export function renderGame(
+  canvas: HTMLCanvasElement,
+  context: CanvasRenderingContext2D,
+  session: AppSession,
+  options: RenderOptions = {}
+): RenderLayout {
   const { width, height } = canvas.getBoundingClientRect();
   const ratio = window.devicePixelRatio || 1;
   canvas.width = Math.floor(width * ratio);
@@ -19,8 +29,10 @@ export function renderGame(canvas: HTMLCanvasElement, context: CanvasRenderingCo
   drawSurface(context, surface);
   const sticker = getStickerRect(surface, width, height);
   drawResidue(context, sticker, session);
-  drawSticker(context, sticker, session);
-  drawTensionGauge(context, sticker, session);
+  drawSticker(context, sticker, session, options.stickerSprites ?? null);
+  if (shouldDrawCanvasGauge(session.status)) {
+    drawTensionGauge(context, sticker, session, Boolean(options.stickerSprites));
+  }
   drawPullGuide(context, sticker, session);
 
   const heldCorner = getHeldCornerPoint(sticker, session);
@@ -122,7 +134,12 @@ function drawResidue(context: CanvasRenderingContext2D, sticker: DOMRect, sessio
   context.restore();
 }
 
-function drawSticker(context: CanvasRenderingContext2D, sticker: DOMRect, session: AppSession): void {
+function drawSticker(
+  context: CanvasRenderingContext2D,
+  sticker: DOMRect,
+  session: AppSession,
+  sprites: StickerSprites | null
+): void {
   const visualProgress =
     session.status === 'result' && !session.physics.torn
       ? 1
@@ -140,6 +157,12 @@ function drawSticker(context: CanvasRenderingContext2D, sticker: DOMRect, sessio
 
   context.save();
   if (removedResult) {
+    context.restore();
+    return;
+  }
+
+  if (sprites) {
+    drawStickerSprite(context, sticker, session, sprites, visualProgress, activePeel);
     context.restore();
     return;
   }
@@ -184,6 +207,75 @@ function drawSticker(context: CanvasRenderingContext2D, sticker: DOMRect, sessio
 
   drawStickerLines(context, sticker, remainingWidth, session);
   drawGrabTab(context, sticker, visualProgress, zoneColor, heldCorner);
+  context.restore();
+}
+
+function drawStickerSprite(
+  context: CanvasRenderingContext2D,
+  sticker: DOMRect,
+  session: AppSession,
+  sprites: StickerSprites,
+  visualProgress: number,
+  activePeel: boolean
+): void {
+  const key = selectStickerAssetKey({
+    visualProgress,
+    pullOffset: session.pullOffset,
+    torn: session.physics.torn
+  });
+  const sprite = sprites[key];
+  const aspectRatio = sprite.width / sprite.height;
+  const width = sticker.width * (key === 'rolled' ? 1.28 : 1.22);
+  const height = width / aspectRatio;
+  const motionX = key === 'flat' ? 0 : Math.max(-22, Math.min(10, session.pullOffset.x * 0.05));
+  const motionY = key === 'flat' ? 0 : Math.max(-18, Math.min(16, session.pullOffset.y * 0.05));
+  const x = sticker.x - sticker.width * 0.14 + motionX;
+  const y = sticker.y - height * 0.38 + motionY;
+
+  context.save();
+  context.globalAlpha = session.status === 'result' && session.physics.torn ? 0.98 : 1;
+  context.drawImage(sprite.image, x, y, width, height);
+  context.restore();
+
+  if (activePeel && !session.physics.torn) {
+    drawSpritePullAccent(context, sticker, session, visualProgress);
+  }
+
+  if (session.physics.tearPreview && !session.physics.torn) {
+    drawSpriteTearWarning(context, sticker);
+  }
+}
+
+function drawSpritePullAccent(
+  context: CanvasRenderingContext2D,
+  sticker: DOMRect,
+  session: AppSession,
+  visualProgress: number
+): void {
+  const heldCorner = getHeldCornerPoint(sticker, session);
+  const edgeX = sticker.right - sticker.width * Math.min(0.9, visualProgress);
+
+  context.save();
+  context.globalAlpha = 0.5;
+  context.strokeStyle = colorForSession(session);
+  context.lineWidth = 2;
+  context.beginPath();
+  context.moveTo(edgeX, sticker.y + sticker.height * 0.12);
+  context.quadraticCurveTo(heldCorner.x - 24, heldCorner.y - 18, heldCorner.x + 20, heldCorner.y + 12);
+  context.stroke();
+  context.restore();
+}
+
+function drawSpriteTearWarning(context: CanvasRenderingContext2D, sticker: DOMRect): void {
+  context.save();
+  context.globalAlpha = 0.72;
+  context.strokeStyle = '#d94a45';
+  context.lineWidth = 2;
+  context.beginPath();
+  context.moveTo(sticker.right - sticker.width * 0.16, sticker.y + 16);
+  context.lineTo(sticker.right - sticker.width * 0.12, sticker.y + 38);
+  context.lineTo(sticker.right - sticker.width * 0.18, sticker.y + 62);
+  context.stroke();
   context.restore();
 }
 
@@ -322,10 +414,15 @@ function getHeldCornerPoint(sticker: DOMRect, session: AppSession): { x: number;
   };
 }
 
-function drawTensionGauge(context: CanvasRenderingContext2D, sticker: DOMRect, session: AppSession): void {
+function drawTensionGauge(
+  context: CanvasRenderingContext2D,
+  sticker: DOMRect,
+  session: AppSession,
+  spriteMode: boolean
+): void {
   const width = sticker.width * 0.88;
   const x = sticker.x + (sticker.width - width) / 2;
-  const y = sticker.bottom + 26;
+  const y = sticker.bottom + (spriteMode ? 92 : 26);
   const tension = session.physics.tension;
   const progress = session.physics.progress;
   const color = colorForSession(session);
